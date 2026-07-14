@@ -1,0 +1,218 @@
+import { useEffect, useState } from "react";
+import client from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import { extractErrorMessage } from "../utils/errors";
+
+const STATUS_STYLE = {
+  pending: { color: "#b8860b", label: "Pending" },
+  approved: { color: "#2f7d4f", label: "Approved" },
+  rejected: { color: "#b3261e", label: "Rejected" },
+};
+
+export default function LoanRequests() {
+  const { isTreasurer } = useAuth();
+  const [requests, setRequests] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+
+  function loadRequests() {
+    client.get("/loan-requests/").then((res) => setRequests(res.data));
+  }
+
+  useEffect(() => {
+    loadRequests();
+    if (isTreasurer) {
+      client.get("/members/").then((res) => setMembers(res.data));
+    }
+  }, [isTreasurer]);
+
+  function memberName(r) {
+    return r.member_name || members.find((m) => m.id === r.member)?.full_name || `#${r.member}`;
+  }
+
+  async function submitRequest(e) {
+    e.preventDefault();
+    setMessage(null);
+    setSubmitting(true);
+    try {
+      await client.post("/loan-requests/", { amount, reason });
+      setMessage({ type: "success", text: "Loan request submitted \u2014 waiting on the treasurer to review it." });
+      setAmount("");
+      setReason("");
+      loadRequests();
+    } catch (err) {
+      setMessage({ type: "error", text: extractErrorMessage(err, "Could not submit loan request.") });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function decide(id, action) {
+    setMessage(null);
+    setBusyId(id);
+    try {
+      await client.post(`/loan-requests/${id}/${action}/`);
+      setMessage({
+        type: "success",
+        text: action === "approve" ? "Loan approved and disbursed." : "Request rejected.",
+      });
+      loadRequests();
+    } catch (err) {
+      setMessage({ type: "error", text: extractErrorMessage(err, `Could not ${action} this request.`) });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function withdraw(id) {
+    setMessage(null);
+    setBusyId(id);
+    try {
+      await client.delete(`/loan-requests/${id}/`);
+      loadRequests();
+    } catch (err) {
+      setMessage({ type: "error", text: extractErrorMessage(err, "Could not withdraw this request.") });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const pending = requests.filter((r) => r.status === "pending");
+  const decided = requests.filter((r) => r.status !== "pending");
+
+  return (
+    <div>
+      <h1 className="page-title">Loan requests</h1>
+      <p className="page-sub">
+        {isTreasurer
+          ? "Review pending loan requests from members, and approve or reject them."
+          : "Request a loan against your savings. Once approved, it's disbursed immediately."}
+      </p>
+
+      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+
+      {!isTreasurer && (
+        <div className="ledger-card">
+          <h2 className="card-heading">Request a loan</h2>
+          <form onSubmit={submitRequest}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>Amount (MK)</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                  style={{ padding: "8px 10px" }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 220 }}>
+                <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>Reason (optional)</span>
+                <input
+                  type="text"
+                  maxLength={255}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. School fees, business stock"
+                  style={{ padding: "8px 10px" }}
+                />
+              </label>
+            </div>
+            <button className="btn btn-brass" type="submit" disabled={submitting || !amount}>
+              {submitting ? "Submitting\u2026" : "Submit request"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="ledger-card">
+        <h2 className="card-heading">{isTreasurer ? "Pending requests" : "Your pending requests"}</h2>
+        {pending.length === 0 ? (
+          <p style={{ color: "var(--ink-soft)" }}>No pending requests.</p>
+        ) : (
+          <table className="ledger-table">
+            <thead>
+              <tr>
+                {isTreasurer && <th>Member</th>}
+                <th>Amount</th>
+                <th>Reason</th>
+                <th>Requested</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pending.map((r) => (
+                <tr key={r.id}>
+                  {isTreasurer && <td>{memberName(r)}</td>}
+                  <td className="amount">MK {Number(r.amount).toLocaleString()}</td>
+                  <td>{r.reason || "\u2014"}</td>
+                  <td>{new Date(r.requested_at).toLocaleDateString()}</td>
+                  <td>
+                    {isTreasurer ? (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="btn btn-brass"
+                          disabled={busyId === r.id}
+                          onClick={() => decide(r.id, "approve")}
+                        >
+                          Approve
+                        </button>
+                        <button className="btn" disabled={busyId === r.id} onClick={() => decide(r.id, "reject")}>
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="btn" disabled={busyId === r.id} onClick={() => withdraw(r.id)}>
+                        Withdraw
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {decided.length > 0 && (
+        <div className="ledger-card">
+          <h2 className="card-heading">Decided requests</h2>
+          <table className="ledger-table">
+            <thead>
+              <tr>
+                {isTreasurer && <th>Member</th>}
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Decided</th>
+              </tr>
+            </thead>
+            <tbody>
+              {decided.map((r) => {
+                const style = STATUS_STYLE[r.status] || { color: "var(--ink-soft)", label: r.status };
+                return (
+                  <tr key={r.id}>
+                    {isTreasurer && <td>{memberName(r)}</td>}
+                    <td className="amount">MK {Number(r.amount).toLocaleString()}</td>
+                    <td>
+                      <span style={{ color: style.color, fontWeight: 600 }}>{style.label}</span>
+                      {r.status === "rejected" && r.rejection_reason && (
+                        <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{r.rejection_reason}</div>
+                      )}
+                    </td>
+                    <td>{r.decided_at ? new Date(r.decided_at).toLocaleDateString() : "\u2014"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

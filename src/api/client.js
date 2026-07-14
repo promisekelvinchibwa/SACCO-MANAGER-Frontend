@@ -1,6 +1,10 @@
 import axios from "axios";
 
+<<<<<<< HEAD
 const API_BASE = "http://localhost:8000/api";
+=======
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+>>>>>>> 21490c7 (added the changepassword page, loan request paage, and members can be added from within the app)
 
 const client = axios.create({ baseURL: API_BASE });
 
