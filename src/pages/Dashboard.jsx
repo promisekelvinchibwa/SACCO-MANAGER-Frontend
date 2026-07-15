@@ -11,8 +11,10 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([client.get("/members/"), client.get("/loans/")])
       .then(([m, l]) => {
-        setMembers(m.data);
-        setLoans(l.data);
+        // Handle both a plain array response and DRF-style pagination
+        // ({ count, next, previous, results }).
+        setMembers(Array.isArray(m.data) ? m.data : m.data?.results ?? []);
+        setLoans(Array.isArray(l.data) ? l.data : l.data?.results ?? []);
       })
       .catch(() => setError("Could not load dashboard data."));
   }, []);

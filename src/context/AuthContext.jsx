@@ -8,6 +8,9 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("sacco_token"));
   const [username, setUsername] = useState(localStorage.getItem("sacco_username"));
   const [role, setRole] = useState(localStorage.getItem("sacco_role"));
+  const [isSuperAdmin, setIsSuperAdmin] = useState(
+    localStorage.getItem("sacco_is_superuser") === "true"
+  );
   const [mustChangePassword, setMustChangePasswordState] = useState(
     localStorage.getItem("sacco_must_change_password") === "true"
   );
@@ -26,6 +29,10 @@ export function AuthProvider({ children }) {
     setRole(me.data.role);
     localStorage.setItem("sacco_must_change_password", String(!!me.data.must_change_password));
     setMustChangePasswordState(!!me.data.must_change_password);
+    // Distinct from role: a Django superuser, not this app's treasurer
+    // role. Only this gates the "onboard a new group" page.
+    localStorage.setItem("sacco_is_superuser", String(!!me.data.is_superuser));
+    setIsSuperAdmin(!!me.data.is_superuser);
   }
 
   function logout() {
@@ -33,10 +40,12 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("sacco_username");
     localStorage.removeItem("sacco_role");
     localStorage.removeItem("sacco_must_change_password");
+    localStorage.removeItem("sacco_is_superuser");
     setToken(null);
     setUsername(null);
     setRole(null);
     setMustChangePasswordState(false);
+    setIsSuperAdmin(false);
   }
 
   // Called once the person has successfully set their own password, so
@@ -50,7 +59,10 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, username, role, isTreasurer, mustChangePassword, login, logout, clearMustChangePassword }}
+      value={{
+        token, username, role, isTreasurer, isSuperAdmin,
+        mustChangePassword, login, logout, clearMustChangePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

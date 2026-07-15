@@ -10,7 +10,11 @@ export function useCycles() {
     setLoading(true);
     try {
       const res = await client.get("/cycles/");
-      setCycles(res.data);
+      // Handle both a plain array response and DRF-style pagination
+      // ({ count, next, previous, results }). Falls back to [] for
+      // any other unexpected shape so `.find`/`.filter` never break.
+      const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+      setCycles(data);
       setError("");
     } catch {
       setError("Could not load cycles.");
@@ -19,7 +23,9 @@ export function useCycles() {
     }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   return { cycles, loading, error, reload };
 }
