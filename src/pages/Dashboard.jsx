@@ -41,7 +41,9 @@ export default function Dashboard() {
     .filter((m) => m.meeting_date >= todayStr)
     .sort((a, b) => (a.meeting_date < b.meeting_date ? -1 : 1))[0];
 
-  const activeLoans = loans.filter((l) => l.status === "active");
+  const activeLoans = openCycle
+    ? loans.filter((l) => l.status === "active" && l.cycle === openCycle.id)
+    : [];
   const isMember = role === "member";
 
   return (
@@ -65,7 +67,7 @@ export default function Dashboard() {
           <div className="stat-box">
             <div className="stat-label">Your outstanding loans</div>
             <div className="stat-value">
-              {balance.personal_outstanding_loans != null
+              {openCycle && balance.personal_outstanding_loans != null
                 ? `MK ${Number(balance.personal_outstanding_loans).toLocaleString()}`
                 : "\u2014"}
             </div>
