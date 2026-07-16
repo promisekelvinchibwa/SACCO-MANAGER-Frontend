@@ -106,7 +106,7 @@ export default function Savings() {
         </div>
         {!isTreasurer && (
           <div className="stat-box">
-            <div className="stat-label">My book balance</div>
+            <div className="stat-label">Book balance</div>
             <div className="stat-value">MK {bookBalance.toLocaleString()}</div>
           </div>
         )}

@@ -24,6 +24,8 @@ export default function Cycles() {
   const [groups, setGroups] = useState([]);
   const [form, setForm] = useState({ group: "", start_date: "", end_date: "", meeting_weekday: "" });
   const [message, setMessage] = useState(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successText, setSuccessText] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -54,12 +56,11 @@ export default function Cycles() {
         status: "open",
       });
       const weekdayLabel = WEEKDAYS.find((w) => w.value === Number(form.meeting_weekday))?.label;
-      setMessage({
-        type: "success",
-        text: weekdayLabel
-          ? `Cycle started \u2014 meetings scheduled for every ${weekdayLabel} through the end date.`
-          : "Cycle started.",
-      });
+      const text = weekdayLabel
+        ? `Cycle started \u2014 meetings scheduled for every ${weekdayLabel} through the end date.`
+        : "Cycle started.";
+      setSuccessText(text);
+      setShowSuccessPopup(true);
       setForm({ ...form, start_date: "", end_date: "", meeting_weekday: "" });
       reload();
     } catch (err) {
@@ -85,73 +86,92 @@ export default function Cycles() {
       <h1 className="page-title">Cycles</h1>
       <p className="page-sub">Start a new savings cycle and view past cycles.</p>
 
-      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      {message && message.type !== "success" && (
+        <div className={`alert alert-${message.type}`}>{message.text}</div>
+      )}
+
+      {showSuccessPopup && (
+        <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40}}>
+          <div style={{background: 'white', padding: 20, borderRadius: 6, maxWidth: 520, width: '90%'}}>
+            <h3 style={{marginTop:0}}>Cycle started</h3>
+            <p style={{marginBottom: 16}}>{successText}</p>
+            <div style={{textAlign: 'right'}}>
+              <button
+                className="btn"
+                onClick={() => { setShowSuccessPopup(false); setSuccessText(""); }}
+              >OK</button>
+            </div>
+          </div>
+        </div>
+      )}
       {!isTreasurer && <ReadOnlyNotice />}
 
       {isTreasurer && (
         <div className="ledger-card">
           <h2 className="card-heading">Start a cycle</h2>
           <form onSubmit={startCycle}>
-            {groups.length > 1 && (
-              <div className="field">
-                <label>Group</label>
-                <select
-                  value={form.group}
-                  onChange={(e) => setForm({ ...form, group: e.target.value })}
-                  required
-                >
-                  <option value="">Select a group\u2026</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="field">
-              <label>Start date</label>
-              <input
-                type="date" value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                required
-              />
-            </div>
-            <div className="field">
-              <label>End date</label>
-              <input
-                type="date" value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Weekly meeting day</label>
-              <select
-                value={form.meeting_weekday}
-                onChange={(e) => setForm({ ...form, meeting_weekday: e.target.value })}
-                required
-              >
-                <option value="">Select a day\u2026</option>
-                {WEEKDAYS.map((w) => (
-                  <option key={w.value} value={w.value}>{w.label}</option>
-                ))}
-              </select>
-              <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>
-                Every {form.meeting_weekday !== "" ? WEEKDAYS[Number(form.meeting_weekday)].label : "chosen day"}{" "}
-                between the start and end date will be scheduled automatically \u2014 no need to add
-                meetings one by one.
-              </p>
-            </div>
             {selectedGroupBlocked && (
               <div className="alert alert-error">
                 This group already has an open cycle. Close it (via share-out) before starting another.
               </div>
             )}
-            <button
-              className="btn btn-brass" type="submit"
-              disabled={saving || !form.group || selectedGroupBlocked}
-            >
-              {saving ? "Starting\u2026" : "Start cycle"}
-            </button>
+            <fieldset disabled={selectedGroupBlocked || saving} style={{ border: "none", padding: 0 }}>
+              {groups.length > 1 && (
+                <div className="field">
+                  <label>Group</label>
+                  <select
+                    value={form.group}
+                    onChange={(e) => setForm({ ...form, group: e.target.value })}
+                    required
+                  >
+                    <option value="">Select a group\u2026</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="field">
+                <label>Start date</label>
+                <input
+                  type="date" value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label>End date</label>
+                <input
+                  type="date" value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label>Weekly meeting day</label>
+                <select
+                  value={form.meeting_weekday}
+                  onChange={(e) => setForm({ ...form, meeting_weekday: e.target.value })}
+                  required
+                >
+                  <option value="">Select a day\u2026</option>
+                  {WEEKDAYS.map((w) => (
+                    <option key={w.value} value={w.value}>{w.label}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>
+                  Every {form.meeting_weekday !== "" ? WEEKDAYS[Number(form.meeting_weekday)].label : "chosen day"}{" "}
+                  between the start and end date will be scheduled automatically \u2014 no need to add
+                  meetings one by one.
+                </p>
+              </div>
+              <button
+                className="btn btn-brass" type="submit"
+                disabled={!form.group}
+              >
+                {saving ? "Starting\u2026" : "Start cycle"}
+              </button>
+            </fieldset>
           </form>
         </div>
       )}
