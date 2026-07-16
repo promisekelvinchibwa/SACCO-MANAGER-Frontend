@@ -178,14 +178,14 @@ export default function Savings() {
             <div className="field">
               <label>Member</label>
               <select value={form.member} onChange={(e) => setForm({ ...form, member: e.target.value })} required>
-                <option value="">Select a member\u2026</option>
+                <option value="">Select a member</option>
                 {members.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Meeting</label>
               <select value={form.meeting} onChange={(e) => setForm({ ...form, meeting: e.target.value })} required>
-                <option value="">Select a meeting\u2026</option>
+                <option value="">Select a meeting</option>
                 {meetings.map((m) => <option key={m.id} value={m.id}>{m.meeting_date}</option>)}
               </select>
             </div>

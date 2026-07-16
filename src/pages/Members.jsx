@@ -103,7 +103,7 @@ export default function Members() {
       )}
 
       {isTreasurer && (
-        <div className="ledger-card" style={{ position: "relative" }}>
+        <div className="ledger-card" style={{ position: "relative", backgroundImage: "none" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 className="card-heading" style={{ margin: 0 }}>Add a member</h2>
             {joinCode && (

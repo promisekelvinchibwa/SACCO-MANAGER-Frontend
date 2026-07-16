@@ -75,7 +75,7 @@ export default function Loans() {
           <div className="field" style={{ flex: 1, marginBottom: 0 }}>
             <label>Member</label>
             <select value={issueForm.member} onChange={(e) => setIssueForm({ ...issueForm, member: e.target.value })} required>
-              <option value="">Select a member\u2026</option>
+              <option value="">Select a member</option>
               {members.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
             </select>
           </div>
