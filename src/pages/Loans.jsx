@@ -15,6 +15,22 @@ export default function Loans() {
 
   const openCycle = cycles.find((c) => c.status === "open");
 
+  // Show only loans for the current open cycle. When there's no open
+  // cycle the ledger should be empty.
+  const visibleLoans = openCycle
+    ? loans
+        .filter((l) => l.cycle === openCycle.id)
+        .slice()
+        .sort((a, b) => {
+          const priority = (s) => (s === "defaulted" ? 0 : s === "active" ? 1 : 2);
+          const pa = priority(a.status);
+          const pb = priority(b.status);
+          if (pa !== pb) return pa - pb;
+          // Within same status, show larger outstanding amounts first.
+          return Number(b.outstanding_total || 0) - Number(a.outstanding_total || 0);
+        })
+    : [];
+
   function loadLoans() {
     client.get("/loans/").then((res) => setLoans(res.data));
   }
@@ -69,7 +85,7 @@ export default function Loans() {
       {!isTreasurer && <ReadOnlyNotice />}
 
       {isTreasurer && (
-      <div className="ledger-card">
+      <div className="ledger-card" style={{ backgroundImage: "none" }}>
         <h2 className="card-heading">Issue a loan</h2>
         <form onSubmit={issueLoan} style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
           <div className="field" style={{ flex: 1, marginBottom: 0 }}>
@@ -102,7 +118,7 @@ export default function Loans() {
             </tr>
           </thead>
           <tbody>
-            {loans.map((l) => (
+            {visibleLoans.map((l) => (
               <tr key={l.id}>
                 <td>{memberName(l.member)}</td>
                 <td className="amount">MK {Number(l.principal).toLocaleString()}</td>
@@ -131,8 +147,12 @@ export default function Loans() {
                 )}
               </tr>
             ))}
-            {loans.length === 0 && (
-              <tr><td colSpan={isTreasurer ? 5 : 4} style={{ color: "var(--ink-soft)" }}>No loans yet.</td></tr>
+            {visibleLoans.length === 0 && (
+              <tr>
+                <td colSpan={isTreasurer ? 5 : 4} style={{ color: "var(--ink-soft)" }}>
+                  {openCycle ? "No loans for the current open cycle." : "No open cycle — loan ledger is empty."}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

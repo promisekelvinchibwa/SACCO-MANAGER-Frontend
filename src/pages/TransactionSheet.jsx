@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import client from "../api/client";
 import { useCycles } from "../hooks/useCycles";
 import { useAuth } from "../context/AuthContext";
@@ -6,9 +6,13 @@ import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function TransactionSheet() {
   const { cycles, loading: cyclesLoading } = useCycles();
-  const { isTreasurer } = useAuth();
+  const { isTreasurer, username } = useAuth();
   const [entries, setEntries] = useState([]);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     client.get("/ledger-entries/")
@@ -20,6 +24,34 @@ export default function TransactionSheet() {
   const currentCycleEntries = openCycle
     ? entries.filter((entry) => entry.cycle === openCycle.id)
     : [];
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const isMyEntry = (entry) => {
+    const memberText = (entry.member_name || entry.member || "").toString().toLowerCase();
+    return username && memberText.includes(username.toLowerCase());
+  };
+
+  const filteredEntries = useMemo(() => {
+    return currentCycleEntries.filter((entry) => {
+      if (tab === "my" && !isMyEntry(entry)) return false;
+
+      if (normalizedSearch) {
+        const memberText = (entry.member_name || entry.member || "").toString().toLowerCase();
+        if (!memberText.includes(normalizedSearch)) return false;
+      }
+
+      const entryDate = entry.occurred_at?.slice(0, 10);
+      if (startDate && entryDate && entryDate < startDate) return false;
+      if (endDate && entryDate && entryDate > endDate) return false;
+      return true;
+    });
+  }, [currentCycleEntries, normalizedSearch, startDate, endDate, tab, username]);
+
+  function clearFilters() {
+    setSearch("");
+    setStartDate("");
+    setEndDate("");
+  }
 
   return (
     <div>
@@ -36,6 +68,56 @@ export default function TransactionSheet() {
       {!isTreasurer && <ReadOnlyNotice />}
 
       <div className="ledger-card">
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn"
+              style={{
+                background: tab === "all" ? "var(--ink)" : "var(--paper-raised)",
+                color: tab === "all" ? "#fff" : "var(--ink)",
+                border: tab === "all" ? "1px solid var(--ink)" : "1px solid var(--line)",
+              }}
+              onClick={() => setTab("all")}
+            >
+              Group transactions
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{
+                background: tab === "my" ? "var(--ink)" : "var(--paper-raised)",
+                color: tab === "my" ? "#fff" : "var(--ink)",
+                border: tab === "my" ? "1px solid var(--ink)" : "1px solid var(--line)",
+              }}
+              onClick={() => setTab("my")}
+            >
+              My transactions
+            </button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+            <div className="field" style={{ marginBottom: 0, minWidth: 180 }}>
+              <label style={{ display: "block" }}>Search names</label>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search member name"
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 0, minWidth: 150 }}>
+              <label style={{ display: "block" }}>From</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="field" style={{ marginBottom: 0, minWidth: 150 }}>
+              <label style={{ display: "block" }}>To</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <button type="button" className="btn" onClick={clearFilters} style={{ marginBottom: 0 }}>
+              Clear
+            </button>
+          </div>
+        </div>
         <h2 className="card-heading">Current cycle transactions</h2>
         <table className="ledger-table">
           <thead>
@@ -44,21 +126,21 @@ export default function TransactionSheet() {
               <th>Member</th>
               <th>Transaction</th>
               <th>Amount</th>
-              <th>Reference</th>
             </tr>
           </thead>
           <tbody>
-            {currentCycleEntries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <tr key={entry.id}>
                 <td>{entry.occurred_at?.slice(0, 10) || "-"}</td>
                 <td>{entry.member_name || entry.member || "-"}</td>
                 <td>{entry.entry_type_display || entry.entry_type}</td>
                 <td className="amount">MK {Number(entry.amount).toLocaleString()}</td>
-                <td>{entry.ref_label || "—"}</td>
               </tr>
             ))}
-            {openCycle && currentCycleEntries.length === 0 && (
-              <tr><td colSpan={5} style={{ color: "var(--ink-soft)" }}>No transactions have been recorded for this open cycle yet.</td></tr>
+            {openCycle && filteredEntries.length === 0 && (
+              <tr><td colSpan={4} style={{ color: "var(--ink-soft)" }}>
+                No transactions match the current filters.
+              </td></tr>
             )}
           </tbody>
         </table>
