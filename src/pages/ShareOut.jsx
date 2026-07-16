@@ -13,35 +13,37 @@ export default function ShareOut() {
   const [computing, setComputing] = useState(false);
 
   const openCycle = cycles.find((c) => c.status === "open");
+  const [tab, setTab] = useState("current");
 
-  function loadShareOuts() {
-    client.get("/share-outs/").then((res) => setShareOuts(res.data));
-  }
+  const memberName = (id) => {
+    const m = members.find((mm) => mm.id === id);
+    if (!m) return id;
+    return `${m.first_name || m.firstName || ""} ${m.last_name || m.lastName || ""}`.trim();
+  };
 
-  useEffect(() => {
-    client.get("/members/").then((res) => setMembers(res.data));
-    loadShareOuts();
-  }, []);
-
-  async function computeShareOut() {
-    if (!openCycle) return;
-    setMessage(null);
+  const computeShareOut = async () => {
+    if (!openCycle) {
+      setMessage({ type: "error", text: "No open cycle to compute." });
+      return;
+    }
     setComputing(true);
     try {
-      const res = await client.post(`/cycles/${openCycle.id}/share_out/`);
+      await client.post(`/cycles/${openCycle.id}/share_out/`, {});
       setMessage({ type: "success", text: "Share-out computed." });
-      setShareOuts((prev) => [...prev, res.data]);
       reloadCycles();
+      const resp = await client.get("/share-outs/");
+      setShareOuts(resp.data || []);
     } catch (err) {
-      setMessage({ type: "error", text: err.response?.data?.[0] || "Could not compute share-out." });
+      setMessage({ type: "error", text: err?.message || "Failed to compute share-out." });
     } finally {
       setComputing(false);
     }
-  }
+  };
 
-  function memberName(id) {
-    return members.find((m) => m.id === id)?.full_name || `#${id}`;
-  }
+  useEffect(() => {
+    client.get("/share-outs/").then((r) => setShareOuts(r.data || [])).catch(() => {});
+    client.get("/members/").then((r) => setMembers(r.data || [])).catch(() => {});
+  }, []);
 
   return (
     <div>
@@ -51,74 +53,112 @@ export default function ShareOut() {
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
       {!isTreasurer && <ReadOnlyNotice />}
 
-      <div className="ledger-card" style={{ backgroundImage: "none" }}>
-        <h2 className="card-heading">Current cycle</h2>
-        {openCycle ? (
-          <>
-            <div className="stat-row" style={{ marginBottom: 16 }}>
-              <div className="stat-box">
-                <div className="stat-label">Fund balance</div>
-                <div className="stat-value">MK {Number(openCycle.fund_balance).toLocaleString()}</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-label">Cycle dates</div>
-                <div className="stat-value" style={{ fontSize: 14 }}>{openCycle.start_date} &ndash; {openCycle.end_date}</div>
-              </div>
-            </div>
-            {isTreasurer && (
-              <button className="btn btn-brass" onClick={computeShareOut} disabled={computing}>
-                {computing ? "Computing\u2026" : "Compute share-out for this cycle"}
-              </button>
-            )}
-          </>
-        ) : (
-          <p style={{ color: "var(--ink-soft)" }}>No open cycle.</p>
-        )}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button
+          type="button"
+          className="btn"
+          style={{
+            background: tab === "current" ? "var(--ink)" : "var(--paper-raised)",
+            color: tab === "current" ? "#fff" : "var(--ink)",
+            border: tab === "current" ? "1px solid var(--ink)" : "1px solid var(--line)",
+          }}
+          onClick={() => setTab("current")}
+        >
+          Current cycle
+        </button>
+        <button
+          type="button"
+          className="btn"
+          style={{
+            background: tab === "archives" ? "var(--ink)" : "var(--paper-raised)",
+            color: tab === "archives" ? "#fff" : "var(--ink)",
+            border: tab === "archives" ? "1px solid var(--ink)" : "1px solid var(--line)",
+          }}
+          onClick={() => setTab("archives")}
+        >
+          Archives
+        </button>
       </div>
 
-      {shareOuts.map((so) => (
-        <div className="ledger-card" key={so.id} style={{ backgroundImage: "none" }}>
-          <h2 className="card-heading">Share-out statement &mdash; cycle #{so.cycle}</h2>
-          <div className="stat-row" style={{ marginBottom: 16 }}>
-            <div className="stat-box">
-              <div className="stat-label">Total fund</div>
-              <div className="stat-value">MK {Number(so.total_fund).toLocaleString()}</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">Distributed</div>
-              <div className="stat-value">MK {Number(so.total_distributed).toLocaleString()}</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">Carried forward</div>
-              <div className="stat-value">MK {Number(so.total_carried_forward).toLocaleString()}</div>
-            </div>
-          </div>
-          <table className="ledger-table">
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Savings</th>
-                <th>Gross share</th>
-                <th>Loan deduction</th>
-                <th>Net payout</th>
-              </tr>
-            </thead>
-            <tbody>
-              {so.details.map((d) => (
-                <tr key={d.id}>
-                  <td>{memberName(d.member)}</td>
-                  <td className="amount">MK {Number(d.savings_amount).toLocaleString()}</td>
-                  <td className="amount">MK {Number(d.gross_share).toLocaleString()}</td>
-                  <td className="amount amount-neg">
-                    {Number(d.loan_deduction) > 0 ? `MK ${Number(d.loan_deduction).toLocaleString()}` : "\u2014"}
-                  </td>
-                  <td className="amount amount-pos">MK {Number(d.net_payout).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {tab === "current" && (
+        <div className="ledger-card" style={{ backgroundImage: "none" }}>
+          <h2 className="card-heading">Current cycle</h2>
+          {openCycle ? (
+            <>
+              <div className="stat-row" style={{ marginBottom: 16 }}>
+                <div className="stat-box">
+                  <div className="stat-label">Fund balance</div>
+                  <div className="stat-value">MK {Number(openCycle.fund_balance).toLocaleString()}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">Cycle dates</div>
+                  <div className="stat-value" style={{ fontSize: 14 }}>{openCycle.start_date} &ndash; {openCycle.end_date}</div>
+                </div>
+              </div>
+              {isTreasurer && (
+                <button className="btn btn-brass" onClick={computeShareOut} disabled={computing}>
+                  {computing ? "Computing\u2026" : "Compute share-out for this cycle"}
+                </button>
+              )}
+            </>
+          ) : (
+            <p style={{ color: "var(--ink-soft)" }}>No open cycle.</p>
+          )}
         </div>
-      ))}
+      )}
+
+      {tab === "archives" && (
+        <div>
+          {shareOuts.length === 0 && (
+            <div className="ledger-card" style={{ backgroundImage: "none" }}>
+              <p style={{ color: "var(--ink-soft)" }}>No past share-outs.</p>
+            </div>
+          )}
+          {shareOuts.map((so) => (
+            <div className="ledger-card" key={so.id} style={{ backgroundImage: "none" }}>
+              <h2 className="card-heading">Share-out statement &mdash; cycle #{so.cycle}</h2>
+              <div className="stat-row" style={{ marginBottom: 16 }}>
+                <div className="stat-box">
+                  <div className="stat-label">Total fund</div>
+                  <div className="stat-value">MK {Number(so.total_fund).toLocaleString()}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">Distributed</div>
+                  <div className="stat-value">MK {Number(so.total_distributed).toLocaleString()}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">Carried forward</div>
+                  <div className="stat-value">MK {Number(so.total_carried_forward).toLocaleString()}</div>
+                </div>
+              </div>
+              <table className="ledger-table">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Savings</th>
+                    <th>Gross share</th>
+                    <th>Loan deduction</th>
+                    <th>Net payout</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {so.details.map((d) => (
+                    <tr key={d.id}>
+                      <td>{memberName(d.member)}</td>
+                      <td className="amount">MK {Number(d.savings_amount).toLocaleString()}</td>
+                      <td className="amount">MK {Number(d.gross_share).toLocaleString()}</td>
+                      <td className="amount amount-neg">
+                        {Number(d.loan_deduction) > 0 ? `MK ${Number(d.loan_deduction).toLocaleString()}` : "\u2014"}
+                      </td>
+                      <td className="amount amount-pos">MK {Number(d.net_payout).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
