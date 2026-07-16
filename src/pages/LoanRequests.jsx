@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { extractErrorMessage } from "../utils/errors";
+import { notifyCountsChanged } from "../utils/notify";
 
 const STATUS_STYLE = {
   pending: { color: "#b8860b", label: "Pending" },
@@ -40,10 +41,11 @@ export default function LoanRequests() {
     setSubmitting(true);
     try {
       await client.post("/loan-requests/", { amount, reason });
-      setMessage({ type: "success", text: "Loan request submitted \u2014 waiting on the treasurer to review it." });
+      setMessage({ type: "success", text: "Loan request submitted — waiting on the treasurer to review it." });
       setAmount("");
       setReason("");
       loadRequests();
+      notifyCountsChanged();
     } catch (err) {
       setMessage({ type: "error", text: extractErrorMessage(err, "Could not submit loan request.") });
     } finally {
@@ -61,6 +63,7 @@ export default function LoanRequests() {
         text: action === "approve" ? "Loan approved and disbursed." : "Request rejected.",
       });
       loadRequests();
+      notifyCountsChanged();
     } catch (err) {
       setMessage({ type: "error", text: extractErrorMessage(err, `Could not ${action} this request.`) });
     } finally {
@@ -74,6 +77,7 @@ export default function LoanRequests() {
     try {
       await client.delete(`/loan-requests/${id}/`);
       loadRequests();
+      notifyCountsChanged();
     } catch (err) {
       setMessage({ type: "error", text: extractErrorMessage(err, "Could not withdraw this request.") });
     } finally {
@@ -82,7 +86,6 @@ export default function LoanRequests() {
   }
 
   const pending = requests.filter((r) => r.status === "pending");
-  const decided = requests.filter((r) => r.status !== "pending");
 
   return (
     <div>
@@ -96,7 +99,7 @@ export default function LoanRequests() {
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
 
       {!isTreasurer && (
-        <div className="ledger-card">
+        <div className="ledger-card" style={{ backgroundImage: "none" }}>
           <h2 className="card-heading">Request a loan</h2>
           <form onSubmit={submitRequest}>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
@@ -125,13 +128,13 @@ export default function LoanRequests() {
               </label>
             </div>
             <button className="btn btn-brass" type="submit" disabled={submitting || !amount}>
-              {submitting ? "Submitting\u2026" : "Submit request"}
+              {submitting ? "Submitting…" : "Submit request"}
             </button>
           </form>
         </div>
       )}
 
-      <div className="ledger-card">
+      <div className="ledger-card" style={{ backgroundImage: "none" }}>
         <h2 className="card-heading">{isTreasurer ? "Pending requests" : "Your pending requests"}</h2>
         {pending.length === 0 ? (
           <p style={{ color: "var(--ink-soft)" }}>No pending requests.</p>
@@ -151,7 +154,7 @@ export default function LoanRequests() {
                 <tr key={r.id}>
                   {isTreasurer && <td>{memberName(r)}</td>}
                   <td className="amount">MK {Number(r.amount).toLocaleString()}</td>
-                  <td>{r.reason || "\u2014"}</td>
+                  <td>{r.reason || "—"}</td>
                   <td>{new Date(r.requested_at).toLocaleDateString()}</td>
                   <td>
                     {isTreasurer ? (
@@ -163,7 +166,7 @@ export default function LoanRequests() {
                         >
                           Approve
                         </button>
-                        <button className="btn" disabled={busyId === r.id} onClick={() => decide(r.id, "reject")}>
+                        <button className="btn" disabled={busyId === r.id} onClick={() => decide(r.id, "reject")}> 
                           Reject
                         </button>
                       </div>
@@ -179,40 +182,6 @@ export default function LoanRequests() {
           </table>
         )}
       </div>
-
-      {decided.length > 0 && (
-        <div className="ledger-card">
-          <h2 className="card-heading">Decided requests</h2>
-          <table className="ledger-table">
-            <thead>
-              <tr>
-                {isTreasurer && <th>Member</th>}
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Decided</th>
-              </tr>
-            </thead>
-            <tbody>
-              {decided.map((r) => {
-                const style = STATUS_STYLE[r.status] || { color: "var(--ink-soft)", label: r.status };
-                return (
-                  <tr key={r.id}>
-                    {isTreasurer && <td>{memberName(r)}</td>}
-                    <td className="amount">MK {Number(r.amount).toLocaleString()}</td>
-                    <td>
-                      <span style={{ color: style.color, fontWeight: 600 }}>{style.label}</span>
-                      {r.status === "rejected" && r.rejection_reason && (
-                        <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{r.rejection_reason}</div>
-                      )}
-                    </td>
-                    <td>{r.decided_at ? new Date(r.decided_at).toLocaleDateString() : "\u2014"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

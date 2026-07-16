@@ -201,6 +201,8 @@ export default function Layout() {
   const { username, role, groupName, joinCode, logout, mustChangePassword, isSuperAdmin, isTreasurer } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [pendingLoanRequestsCount, setPendingLoanRequestsCount] = useState(0);
+  const [pendingCorrectionsCount, setPendingCorrectionsCount] = useState(0);
   const [showCode, setShowCode] = useState(false); // Keep this line for state management
 
   function handleLogout() {
@@ -225,6 +227,29 @@ export default function Layout() {
     ? [...groupLinks, { to: "/join-group", label: "Join another group" }]
     : groupLinks;
 
+  useEffect(() => {
+    // Only fetch group-scoped counts for non-super-admins.
+    if (isSuperAdmin) return;
+
+    function fetchCounts() {
+      client
+        .get("/loan-requests/?status=pending")
+        .then((r) => setPendingLoanRequestsCount(r.data?.length || 0))
+        .catch(() => {});
+      client
+        .get("/ledger-entry-corrections/?status=pending")
+        .then((r) => setPendingCorrectionsCount(r.data?.length || 0))
+        .catch(() => {});
+    }
+
+    fetchCounts();
+    // Re-fetch immediately whenever a loan request or ledger correction
+    // is created/approved/rejected/withdrawn/voted on elsewhere in the
+    // app, instead of only on group switch or full reload.
+    window.addEventListener("sacco:counts-changed", fetchCounts);
+    return () => window.removeEventListener("sacco:counts-changed", fetchCounts);
+  }, [groupName, isSuperAdmin]);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -240,7 +265,33 @@ export default function Layout() {
               end={l.end}
               className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
             >
-              {l.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span>{l.label}</span>
+                {l.to === "/loan-requests" && pendingLoanRequestsCount > 0 && (
+                  <span style={{
+                    display: "inline-block",
+                    background: "var(--ink)",
+                    color: "#fff",
+                    borderRadius: 12,
+                    padding: "2px 8px",
+                    fontSize: 12,
+                    minWidth: 20,
+                    textAlign: "center",
+                  }}>{pendingLoanRequestsCount}</span>
+                )}
+                {l.to === "/transactions" && pendingCorrectionsCount > 0 && (
+                  <span style={{
+                    display: "inline-block",
+                    background: "var(--ink)",
+                    color: "#fff",
+                    borderRadius: 12,
+                    padding: "2px 8px",
+                    fontSize: 12,
+                    minWidth: 20,
+                    textAlign: "center",
+                  }}>{pendingCorrectionsCount}</span>
+                )}
+              </span>
             </NavLink>
           ))}
           {isTreasurer && (

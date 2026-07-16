@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function ShareOut() {
-  const { isTreasurer } = useAuth();
+  const { isTreasurer, refreshMe } = useAuth();
   const { cycles, reload: reloadCycles } = useCycles();
   const [members, setMembers] = useState([]);
   const [shareOuts, setShareOuts] = useState([]);
@@ -15,10 +15,21 @@ export default function ShareOut() {
   const openCycle = cycles.find((c) => c.status === "open");
   const [tab, setTab] = useState("current");
 
-  const memberName = (id) => {
-    const m = members.find((mm) => mm.id === id);
-    if (!m) return id;
-    return `${m.first_name || m.firstName || ""} ${m.last_name || m.lastName || ""}`.trim();
+  const memberName = (memberOrId) => {
+    if (!memberOrId) return "";
+
+    if (typeof memberOrId === "object") {
+      if (memberOrId.full_name) return memberOrId.full_name;
+      if (memberOrId.member_name) return memberOrId.member_name;
+      if (memberOrId.first_name || memberOrId.firstName || memberOrId.last_name || memberOrId.lastName) {
+        return `${memberOrId.first_name || memberOrId.firstName || ""} ${memberOrId.last_name || memberOrId.lastName || ""}`.trim();
+      }
+      return memberOrId.id ? `#${memberOrId.id}` : "";
+    }
+
+    const m = members.find((mm) => mm.id === memberOrId || mm.id === Number(memberOrId));
+    if (!m) return `#${memberOrId}`;
+    return m.full_name || `${m.first_name || m.firstName || ""} ${m.last_name || m.lastName || ""}`.trim();
   };
 
   const computeShareOut = async () => {
@@ -144,7 +155,7 @@ export default function ShareOut() {
                 <tbody>
                   {so.details.map((d) => (
                     <tr key={d.id}>
-                      <td>{memberName(d.member)}</td>
+                      <td>{memberName(d.member || d.member_name)}</td>
                       <td className="amount">MK {Number(d.savings_amount).toLocaleString()}</td>
                       <td className="amount">MK {Number(d.gross_share).toLocaleString()}</td>
                       <td className="amount amount-neg">

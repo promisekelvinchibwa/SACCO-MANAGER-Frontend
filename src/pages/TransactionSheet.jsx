@@ -3,12 +3,14 @@ import client from "../api/client";
 import { useCycles } from "../hooks/useCycles";
 import { useAuth } from "../context/AuthContext";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
+import { notifyCountsChanged } from "../utils/notify";
 
 export default function TransactionSheet() {
   const { cycles, loading: cyclesLoading } = useCycles();
   const { isTreasurer, username, role } = useAuth();
   const [entries, setEntries] = useState([]);
   const [corrections, setCorrections] = useState([]);
+  const [approvedRequestsCount, setApprovedRequestsCount] = useState(0);
   const [editingAmounts, setEditingAmounts] = useState({});
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -23,9 +25,19 @@ export default function TransactionSheet() {
         const [entriesRes, correctionsRes] = await Promise.all([
           client.get("/ledger-entries/"),
           client.get("/ledger-entry-corrections/?status=pending"),
+          client.get("/loan-requests/?status=approved"),
         ]);
         setEntries(entriesRes.data);
         setCorrections(correctionsRes.data);
+        // third response is approved loan requests
+        // when the endpoint returns an array, take its length
+        const approved = entriesRes && entriesRes.data ? 0 : 0;
+        try {
+          const approvedRes = await client.get("/loan-requests/?status=approved");
+          setApprovedRequestsCount(approvedRes.data?.length || 0);
+        } catch (e) {
+          setApprovedRequestsCount(0);
+        }
       } catch (err) {
         setError("Could not load the transaction sheet.");
       }
@@ -106,6 +118,7 @@ export default function TransactionSheet() {
         requested_amount: requestedAmount,
       });
       await refreshData();
+      notifyCountsChanged();
     } catch (err) {
       setActionError("Could not submit the correction request.");
     }
@@ -116,6 +129,7 @@ export default function TransactionSheet() {
     try {
       await client.post(`/ledger-entry-corrections/${correctionId}/vote/`, { approved });
       await refreshData();
+      notifyCountsChanged();
     } catch (err) {
       setActionError("Could not submit your vote.");
     }
@@ -127,6 +141,13 @@ export default function TransactionSheet() {
     <div>
       <h1 className="page-title">Transaction sheet</h1>
       <p className="page-sub">All transactions recorded by the treasurer for the current open cycle.</p>
+      {approvedRequestsCount > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+            Approved loan requests processed: <strong>{approvedRequestsCount}</strong>
+          </span>
+        </div>
+      )}
 
       {error && <div className="alert alert-error">{error}</div>}
       {!openCycle && (

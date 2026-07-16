@@ -16,6 +16,9 @@ export function AuthProvider({ children }) {
   );
   const [groupName, setGroupName] = useState(localStorage.getItem("sacco_group_name"));
   const [joinCode, setJoinCode] = useState(localStorage.getItem("sacco_join_code"));
+  const [groupHasOpenCycle, setGroupHasOpenCycle] = useState(
+    localStorage.getItem("sacco_group_has_open_cycle") === "true"
+  );
   const [managedGroups, setManagedGroups] = useState(
     JSON.parse(localStorage.getItem("sacco_managed_groups") || "[]")
   );
@@ -41,6 +44,8 @@ export function AuthProvider({ children }) {
     setGroupName(me.group_name || "");
     localStorage.setItem("sacco_join_code", me.join_code || "");
     setJoinCode(me.join_code || "");
+    localStorage.setItem("sacco_group_has_open_cycle", String(!!me.group_has_open_cycle));
+    setGroupHasOpenCycle(!!me.group_has_open_cycle);
     const groups = me.managed_groups || [];
     localStorage.setItem("sacco_managed_groups", JSON.stringify(groups));
     setManagedGroups(groups);
@@ -119,6 +124,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("sacco_is_superuser");
     localStorage.removeItem("sacco_group_name");
     localStorage.removeItem("sacco_join_code");
+    localStorage.removeItem("sacco_group_has_open_cycle");
     localStorage.removeItem("sacco_managed_groups");
     localStorage.removeItem("sacco_my_groups");
     setToken(null);
@@ -128,6 +134,7 @@ export function AuthProvider({ children }) {
     setIsSuperAdmin(false);
     setGroupName(null);
     setJoinCode(null);
+    setGroupHasOpenCycle(false);
     setManagedGroups([]);
     setMyGroups([]);
   }
@@ -145,7 +152,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         token, username, role, isTreasurer, isSuperAdmin,
-        mustChangePassword, groupName, joinCode, managedGroups, myGroups,
+        mustChangePassword, groupName, joinCode, groupHasOpenCycle, managedGroups, myGroups,
         login, register, logout, clearMustChangePassword, switchGroup, refreshMe,
       }}
     >

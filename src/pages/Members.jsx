@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function Members() {
-  const { isTreasurer, joinCode } = useAuth();
+  const { isTreasurer, joinCode, groupHasOpenCycle } = useAuth();
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [form, setForm] = useState({
@@ -123,9 +123,15 @@ export default function Members() {
               </div>
             )}
           </div>
+          {groupHasOpenCycle && (
+            <div className="alert alert-error" style={{ marginBottom: 16 }}>
+              This group currently has an open cycle. New members cannot be added until share-out is complete.
+            </div>
+          )}
           <form onSubmit={addMember}>
-            {groups.length > 1 && (
-              <div className="field">
+            <fieldset disabled={groupHasOpenCycle} style={{ border: "none", padding: 0 }}>
+              {groups.length > 1 && (
+                <div className="field">
                 <label>Group</label>
                 <select
                   value={form.group}
@@ -163,8 +169,9 @@ export default function Members() {
               />
             </div>
             <button className="btn btn-brass" type="submit" disabled={saving || !form.group}>
-              {saving ? "Adding\u2026" : "Add member"}
+              {saving ? "Adding…" : "Add member"}
             </button>
+          </fieldset>
           </form>
         </div>
       )}
