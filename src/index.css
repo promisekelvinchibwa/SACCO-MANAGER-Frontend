@@ -334,6 +334,8 @@ table.ledger-table tr:last-child td { border-bottom: none; }
 }
 .alert-error { background: var(--rust-soft); color: var(--rust); }
 .alert-success { background: var(--sage-soft); color: var(--sage); }
+/* Blue / white informational alert used across pages */
+.alert-info { background: var(--ink); color: #fff; }
 
 .login-shell {
   min-height: 100vh;

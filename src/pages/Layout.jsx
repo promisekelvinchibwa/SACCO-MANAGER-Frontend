@@ -201,7 +201,7 @@ export default function Layout() {
   const { username, role, groupName, joinCode, logout, mustChangePassword, isSuperAdmin, isTreasurer } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showCode, setShowCode] = useState(false);
+  const [showCode, setShowCode] = useState(false); // Keep this line for state management
 
   function handleLogout() {
     logout();
@@ -244,23 +244,12 @@ export default function Layout() {
             </NavLink>
           ))}
           {isTreasurer && (
-            <>
-              {showCode ? (
-                <div className="nav-link" style={{ cursor: "default" }}>
-                  Join code: <span className="amount">{joinCode}</span>
-                </div>
-              ) : (
-                <button className="nav-link" style={navButtonStyle} onClick={() => setShowCode(true)}>
-                  Show join code
-                </button>
-              )}
-              <NavLink
-                to="/create-group"
-                className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
-              >
-                + New group
-              </NavLink>
-            </>
+            <NavLink
+              to="/create-group"
+              className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+            >
+              + New group
+            </NavLink>
           )}
           {isSuperAdmin && (
             <NavLink

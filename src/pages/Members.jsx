@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function Members() {
-  const { isTreasurer } = useAuth();
+  const { isTreasurer, joinCode } = useAuth();
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [form, setForm] = useState({
@@ -103,8 +103,26 @@ export default function Members() {
       )}
 
       {isTreasurer && (
-        <div className="ledger-card">
-          <h2 className="card-heading">Add a member</h2>
+        <div className="ledger-card" style={{ position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h2 className="card-heading" style={{ margin: 0 }}>Add a member</h2>
+            {joinCode && (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 6 }}>Join code</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div className="amount" style={{ background: "var(--ink)", color: "#fff", padding: "6px 10px", borderRadius: 6 }}>
+                    {joinCode}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => navigator.clipboard?.writeText(joinCode)}
+                    style={{ padding: "8px 10px" }}
+                  >Copy</button>
+                </div>
+              </div>
+            )}
+          </div>
           <form onSubmit={addMember}>
             {groups.length > 1 && (
               <div className="field">

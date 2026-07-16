@@ -111,7 +111,7 @@ export default function Cycles() {
           <h2 className="card-heading">Start a cycle</h2>
           <form onSubmit={startCycle}>
             {selectedGroupBlocked && (
-              <div className="alert alert-error">
+              <div className="alert alert-info">
                 This group already has an open cycle. Close it (via share-out) before starting another.
               </div>
             )}
