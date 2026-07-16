@@ -58,7 +58,7 @@ export default function Fines() {
       {!isTreasurer && <ReadOnlyNotice />}
 
       {isTreasurer && (
-      <div className="ledger-card">
+      <div className="ledger-card" style={{ backgroundImage: "none" }}>
         <h2 className="card-heading">Record a fine</h2>
         <form onSubmit={recordFine}>
           <div className="field">

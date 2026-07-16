@@ -51,7 +51,7 @@ export default function ShareOut() {
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
       {!isTreasurer && <ReadOnlyNotice />}
 
-      <div className="ledger-card">
+      <div className="ledger-card" style={{ backgroundImage: "none" }}>
         <h2 className="card-heading">Current cycle</h2>
         {openCycle ? (
           <>
@@ -77,7 +77,7 @@ export default function ShareOut() {
       </div>
 
       {shareOuts.map((so) => (
-        <div className="ledger-card" key={so.id}>
+        <div className="ledger-card" key={so.id} style={{ backgroundImage: "none" }}>
           <h2 className="card-heading">Share-out statement &mdash; cycle #{so.cycle}</h2>
           <div className="stat-row" style={{ marginBottom: 16 }}>
             <div className="stat-box">
