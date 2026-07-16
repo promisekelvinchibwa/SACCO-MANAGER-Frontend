@@ -154,7 +154,7 @@ export default function Cycles() {
                   onChange={(e) => setForm({ ...form, meeting_weekday: e.target.value })}
                   required
                 >
-                  <option value="">Select a day\u2026</option>
+                  <option value="">Select meeting day</option>
                   {WEEKDAYS.map((w) => (
                     <option key={w.value} value={w.value}>{w.label}</option>
                   ))}
