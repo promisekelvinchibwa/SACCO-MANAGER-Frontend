@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import client from "../api/client";
 import { useCycles } from "../hooks/useCycles";
+import { useAuth } from "../context/AuthContext";
+import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function Loans() {
+  const { isTreasurer } = useAuth();
   const { cycles } = useCycles();
   const [members, setMembers] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -63,7 +66,9 @@ export default function Loans() {
       <p className="page-sub">Issue loans within the borrowing limit and fund balance, and record repayments.</p>
 
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      {!isTreasurer && <ReadOnlyNotice />}
 
+      {isTreasurer && (
       <div className="ledger-card">
         <h2 className="card-heading">Issue a loan</h2>
         <form onSubmit={issueLoan} style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
@@ -82,6 +87,7 @@ export default function Loans() {
           <button className="btn btn-brass" type="submit" disabled={!openCycle}>Issue loan</button>
         </form>
       </div>
+      )}
 
       <div className="ledger-card">
         <h2 className="card-heading">Loan ledger</h2>
@@ -92,7 +98,7 @@ export default function Loans() {
               <th>Principal</th>
               <th>Outstanding</th>
               <th>Status</th>
-              <th>Record repayment</th>
+              {isTreasurer && <th>Record repayment</th>}
             </tr>
           </thead>
           <tbody>
@@ -106,6 +112,7 @@ export default function Loans() {
                     {l.status}
                   </span>
                 </td>
+                {isTreasurer && (
                 <td>
                   {l.status === "active" ? (
                     <div style={{ display: "flex", gap: 6 }}>
@@ -121,10 +128,11 @@ export default function Loans() {
                     </div>
                   ) : "\u2014"}
                 </td>
+                )}
               </tr>
             ))}
             {loans.length === 0 && (
-              <tr><td colSpan={5} style={{ color: "var(--ink-soft)" }}>No loans yet.</td></tr>
+              <tr><td colSpan={isTreasurer ? 5 : 4} style={{ color: "var(--ink-soft)" }}>No loans yet.</td></tr>
             )}
           </tbody>
         </table>

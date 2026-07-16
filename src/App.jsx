@@ -4,6 +4,7 @@ import RequireAuth from "./components/RequireAuth";
 import RequireSuperAdmin from "./components/RequireSuperAdmin";
 import Layout from "./pages/Layout";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Members from "./pages/Members";
@@ -13,8 +14,11 @@ import Loans from "./pages/Loans";
 import LoanRequests from "./pages/LoanRequests";
 import Fines from "./pages/Fines";
 import ShareOut from "./pages/ShareOut";
+import TransactionSheet from "./pages/TransactionSheet";
 import ChangePassword from "./pages/ChangePassword";
 import OnboardGroup from "./pages/OnboardGroup";
+import JoinGroup from "./pages/JoinGroup";
+import CreateGroup from "./pages/CreateGroup";
 
 // The super admin isn't a member of any group, so the group-scoped
 // Dashboard (fund balance, members, active loans) makes no sense for
@@ -30,6 +34,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route
             path="/"
             element={
@@ -46,7 +51,10 @@ export default function App() {
             <Route path="loan-requests" element={<LoanRequests />} />
             <Route path="fines" element={<Fines />} />
             <Route path="share-out" element={<ShareOut />} />
+            <Route path="transactions" element={<TransactionSheet />} />
             <Route path="change-password" element={<ChangePassword />} />
+            <Route path="join-group" element={<JoinGroup />} />
+            <Route path="create-group" element={<CreateGroup />} />
             <Route
               path="onboard-group"
               element={

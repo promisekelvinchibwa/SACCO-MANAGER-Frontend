@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import client from "../api/client";
 import { useCycles } from "../hooks/useCycles";
+import { useAuth } from "../context/AuthContext";
+import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function ShareOut() {
+  const { isTreasurer } = useAuth();
   const { cycles, reload: reloadCycles } = useCycles();
   const [members, setMembers] = useState([]);
   const [shareOuts, setShareOuts] = useState([]);
@@ -46,6 +49,7 @@ export default function ShareOut() {
       <p className="page-sub">Compute the end-of-cycle distribution. Total distributed always reconciles to the fund.</p>
 
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      {!isTreasurer && <ReadOnlyNotice />}
 
       <div className="ledger-card">
         <h2 className="card-heading">Current cycle</h2>
@@ -61,9 +65,11 @@ export default function ShareOut() {
                 <div className="stat-value" style={{ fontSize: 14 }}>{openCycle.start_date} &ndash; {openCycle.end_date}</div>
               </div>
             </div>
-            <button className="btn btn-brass" onClick={computeShareOut} disabled={computing}>
-              {computing ? "Computing\u2026" : "Compute share-out for this cycle"}
-            </button>
+            {isTreasurer && (
+              <button className="btn btn-brass" onClick={computeShareOut} disabled={computing}>
+                {computing ? "Computing\u2026" : "Compute share-out for this cycle"}
+              </button>
+            )}
           </>
         ) : (
           <p style={{ color: "var(--ink-soft)" }}>No open cycle.</p>

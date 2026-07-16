@@ -29,14 +29,20 @@ export default function Savings() {
 
   // For a member this returns their own contributions; for the treasurer it
   // returns everyone's, which is why the balance card below is member-only.
+  // Scoped to the current open cycle's meetings only -- once a cycle
+  // closes, its transactions belong in the archive, not in anyone's
+  // live book balance.
   useEffect(() => {
     client.get("/savings-transactions/").then((res) => setTransactions(res.data));
   }, []);
 
-  const shareTotal = transactions
+  const meetingIds = new Set(meetings.map((m) => m.id));
+  const currentCycleTransactions = transactions.filter((t) => meetingIds.has(t.meeting));
+
+  const shareTotal = currentCycleTransactions
     .filter((t) => t.txn_type === "share_purchase")
     .reduce((sum, t) => sum + Number(t.amount), 0);
-  const socialFundTotal = transactions
+  const socialFundTotal = currentCycleTransactions
     .filter((t) => t.txn_type === "social_fund")
     .reduce((sum, t) => sum + Number(t.amount), 0);
   const bookBalance = shareTotal + socialFundTotal;
@@ -48,7 +54,7 @@ export default function Savings() {
 
   // For a member, group their own transactions by meeting so each past
   // meeting shows what they actually bought/contributed that day.
-  const txnsByMeeting = transactions.reduce((acc, t) => {
+  const txnsByMeeting = currentCycleTransactions.reduce((acc, t) => {
     (acc[t.meeting] = acc[t.meeting] || []).push(t);
     return acc;
   }, {});
@@ -92,19 +98,17 @@ export default function Savings() {
       {!isTreasurer && <ReadOnlyNotice />}
 
       <div className="stat-row">
+        <div className="stat-box">
+          <div className="stat-label">Next meeting</div>
+          <div className="stat-value" style={{ fontSize: 20 }}>
+            {nextMeeting ? nextMeeting.meeting_date : "\u2014"}
+          </div>
+        </div>
         {!isTreasurer && (
-          <>
-            <div className="stat-box">
-              <div className="stat-label">Next meeting</div>
-              <div className="stat-value" style={{ fontSize: 20 }}>
-                {nextMeeting ? nextMeeting.meeting_date : "\u2014"}
-              </div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">My book balance</div>
-              <div className="stat-value">MK {bookBalance.toLocaleString()}</div>
-            </div>
-          </>
+          <div className="stat-box">
+            <div className="stat-label">My book balance</div>
+            <div className="stat-value">MK {bookBalance.toLocaleString()}</div>
+          </div>
         )}
         <div className="stat-box">
           <div className="stat-label">Group fund balance</div>
@@ -151,29 +155,6 @@ export default function Savings() {
               </tbody>
             </table>
           )}
-        </div>
-      )}
-
-      {isTreasurer && (
-        <div className="ledger-card">
-          <h2 className="card-heading">Meeting schedule</h2>
-          <table className="ledger-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedMeetings.map((m) => (
-                <tr key={m.id}>
-                  <td>{m.meeting_date}</td>
-                </tr>
-              ))}
-              {meetings.length === 0 && (
-                <tr><td style={{ color: "var(--ink-soft)" }}>No meetings scheduled for the open cycle yet.</td></tr>
-              )}
-            </tbody>
-          </table>
         </div>
       )}
 

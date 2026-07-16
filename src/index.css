@@ -91,6 +91,102 @@ body {
   text-decoration: underline;
 }
 
+/* Group switcher dropdown -- sits inside the dark .sidebar, so it
+   borrows the same tones as .nav-link (light text on navy, brass for
+   the active/selected state) rather than the light --paper card style
+   used elsewhere in the app. */
+.group-dropdown {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.group-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: #EDEFF3;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.group-dropdown-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-dropdown-trigger:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--brass);
+}
+
+.group-dropdown-trigger:focus-visible {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(156, 122, 60, 0.35);
+}
+
+.group-dropdown-trigger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.group-dropdown-arrow {
+  flex-shrink: 0;
+  color: #AEB8C9;
+  transition: transform 0.15s ease;
+}
+
+.group-dropdown-trigger[aria-expanded="true"] .group-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.group-dropdown-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.group-dropdown-option {
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.group-dropdown-option:hover {
+  background: var(--brass-soft);
+}
+
+.group-dropdown-option.selected {
+  background: var(--brass);
+  color: #241C0E;
+  font-weight: 600;
+}
+
 .main {
   flex: 1;
   padding: 36px 44px;
@@ -126,6 +222,12 @@ body {
   background-position: 0 54px;
 }
 .ledger-card > * { position: relative; }
+/* Cards that hold a table get their row lines from the table itself --
+   the decorative ruled-paper background behind it doesn't line up with
+   variable row heights and reads as doubled horizontal lines. */
+.ledger-card:has(table) {
+  background-image: none;
+}
 
 .card-heading {
   font-family: var(--font-display);
@@ -148,7 +250,6 @@ body {
   padding: 3px 10px;
   border: 1.5px solid currentColor;
   border-radius: 999px;
-  transform: rotate(-1.5deg);
 }
 .stamp-brass { color: var(--brass); background: var(--brass-soft); }
 .stamp-sage { color: var(--sage); background: var(--sage-soft); }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import client from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function Fines() {
+  const { isTreasurer } = useAuth();
   const [members, setMembers] = useState([]);
   const [fines, setFines] = useState([]);
   const [form, setForm] = useState({ member: "", amount: "", reason: "" });
@@ -35,7 +38,10 @@ export default function Fines() {
       await client.post(`/fines/${id}/mark_paid/`);
       loadFines();
     } catch (err) {
-      setMessage({ type: "error", text: err.response?.data?.detail || "Could not mark as paid." });
+      // Errors raised as a plain DRF ValidationError arrive as a list
+      // (["message"]), not {detail: "message"} -- check both shapes.
+      const text = err.response?.data?.[0] || err.response?.data?.detail || "Could not mark as paid.";
+      setMessage({ type: "error", text });
     }
   }
 
@@ -49,7 +55,9 @@ export default function Fines() {
       <p className="page-sub">Record fines against members and mark them as paid once collected.</p>
 
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      {!isTreasurer && <ReadOnlyNotice />}
 
+      {isTreasurer && (
       <div className="ledger-card">
         <h2 className="card-heading">Record a fine</h2>
         <form onSubmit={recordFine}>
@@ -73,6 +81,7 @@ export default function Fines() {
           <button className="btn btn-brass" type="submit">Record fine</button>
         </form>
       </div>
+      )}
 
       <div className="ledger-card">
         <h2 className="card-heading">Fines record</h2>
@@ -98,7 +107,7 @@ export default function Fines() {
                   </span>
                 </td>
                 <td>
-                  {!f.paid && (
+                  {!f.paid && isTreasurer && (
                     <button className="btn" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => markPaid(f.id)}>
                       Mark paid
                     </button>

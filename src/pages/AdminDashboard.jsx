@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   return (
     <div>
       <h1 className="page-title">Admin dashboard</h1>
-      <p className="page-sub">Chikondi Ledger &mdash; platform overview</p>
+      <p className="page-sub">Community SACCO Manager &mdash; platform overview</p>
 
       {error && <div className="alert alert-error">{error}</div>}
 

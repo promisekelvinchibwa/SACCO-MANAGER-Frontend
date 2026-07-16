@@ -4,11 +4,25 @@ import { useCycles } from "../hooks/useCycles";
 import { useAuth } from "../context/AuthContext";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
+// Matches Cycle.WEEKDAY_CHOICES on the backend (Monday=0..Sunday=6) --
+// picking a day here is what drives the backend auto-generating every
+// meeting date across the cycle, instead of the treasurer adding each
+// week's date by hand.
+const WEEKDAYS = [
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
+
 export default function Cycles() {
   const { isTreasurer } = useAuth();
   const { cycles, loading, reload } = useCycles();
   const [groups, setGroups] = useState([]);
-  const [form, setForm] = useState({ group: "", start_date: "", end_date: "" });
+  const [form, setForm] = useState({ group: "", start_date: "", end_date: "", meeting_weekday: "" });
   const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -34,9 +48,19 @@ export default function Cycles() {
     setMessage(null);
     setSaving(true);
     try {
-      await client.post("/cycles/", { ...form, status: "open" });
-      setMessage({ type: "success", text: "Cycle started." });
-      setForm({ ...form, start_date: "", end_date: "" });
+      await client.post("/cycles/", {
+        ...form,
+        meeting_weekday: form.meeting_weekday === "" ? null : Number(form.meeting_weekday),
+        status: "open",
+      });
+      const weekdayLabel = WEEKDAYS.find((w) => w.value === Number(form.meeting_weekday))?.label;
+      setMessage({
+        type: "success",
+        text: weekdayLabel
+          ? `Cycle started \u2014 meetings scheduled for every ${weekdayLabel} through the end date.`
+          : "Cycle started.",
+      });
+      setForm({ ...form, start_date: "", end_date: "", meeting_weekday: "" });
       reload();
     } catch (err) {
       const data = err.response?.data;
@@ -98,6 +122,24 @@ export default function Cycles() {
                 onChange={(e) => setForm({ ...form, end_date: e.target.value })}
                 required
               />
+            </div>
+            <div className="field">
+              <label>Weekly meeting day</label>
+              <select
+                value={form.meeting_weekday}
+                onChange={(e) => setForm({ ...form, meeting_weekday: e.target.value })}
+                required
+              >
+                <option value="">Select a day\u2026</option>
+                {WEEKDAYS.map((w) => (
+                  <option key={w.value} value={w.value}>{w.label}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>
+                Every {form.meeting_weekday !== "" ? WEEKDAYS[Number(form.meeting_weekday)].label : "chosen day"}{" "}
+                between the start and end date will be scheduled automatically \u2014 no need to add
+                meetings one by one.
+              </p>
             </div>
             {selectedGroupBlocked && (
               <div className="alert alert-error">
