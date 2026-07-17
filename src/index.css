@@ -382,3 +382,25 @@ table.ledger-table tr:last-child td { border-bottom: none; }
   font-size: 22px;
   font-weight: 600;
 }
+
+/* Utility: remove decorative and table lines for specific pages */
+.no-lines .ledger-card {
+  background-image: none !important;
+  border: none !important;
+  padding: 24px 26px !important;
+}
+.no-lines .card-heading {
+  border-bottom: none !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+.no-lines table.ledger-table th,
+.no-lines table.ledger-table td {
+  border-bottom: none !important;
+}
+.no-lines table.ledger-table thead th {
+  border-bottom: none !important;
+}
+.no-lines .ledger-card:has(table) {
+  background-image: none;
+}

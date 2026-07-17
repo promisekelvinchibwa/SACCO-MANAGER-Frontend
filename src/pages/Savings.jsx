@@ -13,6 +13,10 @@ export default function Savings() {
   const [form, setForm] = useState({ member: "", meeting: "", txn_type: "share_purchase", amount: "" });
   const [newMeetingDate, setNewMeetingDate] = useState("");
   const [message, setMessage] = useState(null);
+  const [payouts, setPayouts] = useState([]);
+  const [payoutForm, setPayoutForm] = useState({ member: "", amount: "", reason: "" });
+  const [payoutMessage, setPayoutMessage] = useState(null);
+  const [recordingPayout, setRecordingPayout] = useState(false);
 
   const openCycle = cycles.find((c) => c.status === "open");
 
@@ -35,6 +39,14 @@ export default function Savings() {
   useEffect(() => {
     client.get("/savings-transactions/").then((res) => setTransactions(res.data));
   }, []);
+
+  function loadPayouts() {
+    client.get("/social-fund-payouts/").then((res) => setPayouts(res.data)).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (isTreasurer) loadPayouts();
+  }, [isTreasurer]);
 
   const meetingIds = new Set(meetings.map((m) => m.id));
   const currentCycleTransactions = transactions.filter((t) => meetingIds.has(t.meeting));
@@ -89,8 +101,35 @@ export default function Savings() {
     }
   }
 
+  async function recordPayout(e) {
+    e.preventDefault();
+    setPayoutMessage(null);
+    setRecordingPayout(true);
+    try {
+      await client.post("/social-fund-payouts/", {
+        member: payoutForm.member || null,
+        amount: payoutForm.amount,
+        reason: payoutForm.reason,
+      });
+      setPayoutMessage({ type: "success", text: "Social fund payout recorded." });
+      setPayoutForm({ member: "", amount: "", reason: "" });
+      loadPayouts();
+    } catch (err) {
+      const data = err.response?.data;
+      const text =
+        (Array.isArray(data) ? data[0] : null) ||
+        data?.amount?.[0] ||
+        data?.non_field_errors?.[0] ||
+        data?.detail ||
+        "Could not record payout.";
+      setPayoutMessage({ type: "error", text });
+    } finally {
+      setRecordingPayout(false);
+    }
+  }
+
   return (
-    <div>
+    <div className="no-lines">
       <h1 className="page-title">Meetings &amp; savings</h1>
       <p className="page-sub">Record share purchases and social fund contributions per meeting.</p>
 
@@ -116,6 +155,22 @@ export default function Savings() {
             {openCycle ? `MK ${Number(openCycle.fund_balance).toLocaleString()}` : "\u2014"}
           </div>
         </div>
+        {isTreasurer && (
+          <>
+            <div className="stat-box">
+              <div className="stat-label">Social fund reserve</div>
+              <div className="stat-value">
+                {openCycle ? `MK ${Number(openCycle.social_fund_balance).toLocaleString()}` : "\u2014"}
+              </div>
+            </div>
+            <div className="stat-box">
+              <div className="stat-label">Lendable balance</div>
+              <div className="stat-value">
+                {openCycle ? `MK ${Number(openCycle.lendable_balance).toLocaleString()}` : "\u2014"}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {!isTreasurer && (
@@ -203,6 +258,63 @@ export default function Savings() {
             </div>
             <button className="btn btn-brass" type="submit">Record transaction</button>
           </form>
+        </div>
+      )}
+
+      {isTreasurer && (
+        <div className="ledger-card">
+          <h2 className="card-heading">Social fund payouts</h2>
+          <p style={{ color: "var(--ink-soft)", marginBottom: 12, fontSize: 14 }}>
+            Paid directly out of the ring-fenced social fund reserve &mdash; funeral assistance, hospital
+            support, or a general group expense. Can&rsquo;t exceed the current reserve shown above, and
+            never counts against anyone&rsquo;s loan eligibility.
+          </p>
+          {payoutMessage && <div className={`alert alert-${payoutMessage.type}`}>{payoutMessage.text}</div>}
+          <form onSubmit={recordPayout}>
+            <div className="field">
+              <label>Beneficiary (optional &mdash; leave blank for a general group expense)</label>
+              <select value={payoutForm.member} onChange={(e) => setPayoutForm({ ...payoutForm, member: e.target.value })}>
+                <option value="">General group expense</option>
+                {members.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Amount (MK)</label>
+              <input type="number" step="0.01" min="0.01" value={payoutForm.amount}
+                onChange={(e) => setPayoutForm({ ...payoutForm, amount: e.target.value })} required />
+            </div>
+            <div className="field">
+              <label>Reason</label>
+              <input type="text" value={payoutForm.reason} placeholder="e.g. Funeral assistance"
+                onChange={(e) => setPayoutForm({ ...payoutForm, reason: e.target.value })} required />
+            </div>
+            <button className="btn btn-brass" type="submit" disabled={recordingPayout || !openCycle}>
+              {recordingPayout ? "Recording\u2026" : "Record payout"}
+            </button>
+          </form>
+
+          {payouts.length > 0 && (
+            <table className="ledger-table" style={{ marginTop: 20 }}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Beneficiary</th>
+                  <th>Reason</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.date}</td>
+                    <td>{p.member_name || "General group expense"}</td>
+                    <td>{p.reason}</td>
+                    <td className="amount">MK {Number(p.amount).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>

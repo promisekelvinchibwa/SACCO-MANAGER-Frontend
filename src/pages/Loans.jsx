@@ -9,14 +9,13 @@ export default function Loans() {
   const { cycles } = useCycles();
   const [members, setMembers] = useState([]);
   const [loans, setLoans] = useState([]);
-  const [issueForm, setIssueForm] = useState({ member: "", amount: "" });
+  const [notifications, setNotifications] = useState([]);
+  const [issueForm, setIssueForm] = useState({ member: "", amount: "", duration_weeks: "2" });
   const [repayAmounts, setRepayAmounts] = useState({});
   const [message, setMessage] = useState(null);
 
   const openCycle = cycles.find((c) => c.status === "open");
 
-  // Show only loans for the current open cycle. When there's no open
-  // cycle the ledger should be empty.
   const visibleLoans = openCycle
     ? loans
         .filter((l) => l.cycle === openCycle.id)
@@ -26,7 +25,6 @@ export default function Loans() {
           const pa = priority(a.status);
           const pb = priority(b.status);
           if (pa !== pb) return pa - pb;
-          // Within same status, show larger outstanding amounts first.
           return Number(b.outstanding_total || 0) - Number(a.outstanding_total || 0);
         })
     : [];
@@ -35,9 +33,14 @@ export default function Loans() {
     client.get("/loans/").then((res) => setLoans(res.data));
   }
 
+  function loadNotifications() {
+    client.get("/loan-notifications/").then((res) => setNotifications(res.data));
+  }
+
   useEffect(() => {
     client.get("/members/").then((res) => setMembers(res.data));
     loadLoans();
+    loadNotifications();
   }, []);
 
   async function issueLoan(e) {
@@ -49,9 +52,10 @@ export default function Loans() {
         member: issueForm.member,
         cycle: openCycle.id,
         amount: issueForm.amount,
+        duration_weeks: parseInt(issueForm.duration_weeks, 10),
       });
       setMessage({ type: "success", text: "Loan issued." });
-      setIssueForm({ member: "", amount: "" });
+      setIssueForm({ member: "", amount: "", duration_weeks: "2" });
       loadLoans();
     } catch (err) {
       setMessage({ type: "error", text: err.response?.data?.[0] || "Could not issue loan." });
@@ -72,9 +76,31 @@ export default function Loans() {
     }
   }
 
+  async function processDueLoans() {
+    setMessage(null);
+    try {
+      const res = await client.post("/loans/process_due/");
+      setMessage({ type: "success", text: `Processed ${res.data.count} due loan(s).` });
+      loadLoans();
+    } catch (err) {
+      setMessage({ type: "error", text: err.response?.data?.detail || "Could not process due loans." });
+    }
+  }
+
+  async function markNotificationRead(id) {
+    await client.post(`/loan-notifications/${id}/mark_read/`);
+    setNotifications(notifications.filter((n) => n.id !== id));
+  }
+
   function memberName(id) {
     return members.find((m) => m.id === id)?.full_name || `#${id}`;
   }
+
+  function formatRate(rate) {
+    return `${(Number(rate) * 100).toFixed(0)}%`;
+  }
+
+  const unreadNotifications = notifications.filter((n) => !n.is_read);
 
   return (
     <div>
@@ -84,25 +110,54 @@ export default function Loans() {
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
       {!isTreasurer && <ReadOnlyNotice />}
 
+      {unreadNotifications.length > 0 && (
+        <div className="ledger-card" style={{ marginBottom: 16 }}>
+          <h2 className="card-heading">Notifications ({unreadNotifications.length})</h2>
+          {unreadNotifications.map((n) => (
+            <div key={n.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <div>
+                <strong>{n.notification_type}:</strong> {n.message}
+                <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{new Date(n.created_at).toLocaleString()}</div>
+              </div>
+              <button className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => markNotificationRead(n.id)}>Dismiss</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isTreasurer && (
-      <div className="ledger-card" style={{ backgroundImage: "none" }}>
-        <h2 className="card-heading">Issue a loan</h2>
-        <form onSubmit={issueLoan} style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-            <label>Member</label>
-            <select value={issueForm.member} onChange={(e) => setIssueForm({ ...issueForm, member: e.target.value })} required>
-              <option value="">Select a member</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-            </select>
+        <div className="ledger-card" style={{ backgroundImage: "none", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 className="card-heading" style={{ margin: 0 }}>Issue a loan</h2>
+            <button className="btn" style={{ padding: "6px 14px", fontSize: 13 }} onClick={processDueLoans} disabled={!openCycle}>
+              Process due loans
+            </button>
           </div>
-          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-            <label>Amount (MK)</label>
-            <input type="number" step="0.01" min="0.01" value={issueForm.amount}
-              onChange={(e) => setIssueForm({ ...issueForm, amount: e.target.value })} required />
-          </div>
-          <button className="btn btn-brass" type="submit" disabled={!openCycle}>Issue loan</button>
-        </form>
-      </div>
+          <form onSubmit={issueLoan} style={{ display: "flex", gap: 12, alignItems: "flex-end", marginTop: 12 }}>
+            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Member</label>
+              <select value={issueForm.member} onChange={(e) => setIssueForm({ ...issueForm, member: e.target.value })} required>
+                <option value="">Select a member</option>
+                {members.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Amount (MK)</label>
+              <input type="number" step="0.01" min="0.01" value={issueForm.amount}
+                onChange={(e) => setIssueForm({ ...issueForm, amount: e.target.value })} required />
+            </div>
+            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Duration</label>
+              <select value={issueForm.duration_weeks} onChange={(e) => setIssueForm({ ...issueForm, duration_weeks: e.target.value })}>
+                <option value="1">1 week (15%)</option>
+                <option value="2">2 weeks (15%)</option>
+                <option value="3">3 weeks (20%)</option>
+                <option value="4">4 weeks (20%)</option>
+              </select>
+            </div>
+            <button className="btn btn-brass" type="submit" disabled={!openCycle}>Issue loan</button>
+          </form>
+        </div>
       )}
 
       <div className="ledger-card">
@@ -112,7 +167,10 @@ export default function Loans() {
             <tr>
               <th>Member</th>
               <th>Principal</th>
+              <th>Rate</th>
               <th>Outstanding</th>
+              <th>Due date</th>
+              <th>Extensions</th>
               <th>Status</th>
               {isTreasurer && <th>Record repayment</th>}
             </tr>
@@ -122,7 +180,10 @@ export default function Loans() {
               <tr key={l.id}>
                 <td>{memberName(l.member)}</td>
                 <td className="amount">MK {Number(l.principal).toLocaleString()}</td>
+                <td>{formatRate(l.interest_rate)}</td>
                 <td className="amount">MK {Number(l.outstanding_total).toLocaleString()}</td>
+                <td>{l.due_date || "—"}</td>
+                <td>{l.extension_count}</td>
                 <td>
                   <span className={`stamp ${l.status === "repaid" ? "stamp-sage" : l.status === "defaulted" ? "stamp-rust" : "stamp-brass"}`}>
                     {l.status}
@@ -149,7 +210,7 @@ export default function Loans() {
             ))}
             {visibleLoans.length === 0 && (
               <tr>
-                <td colSpan={isTreasurer ? 5 : 4} style={{ color: "var(--ink-soft)" }}>
+                <td colSpan={isTreasurer ? 8 : 7} style={{ color: "var(--ink-soft)" }}>
                   {openCycle ? "No loans for the current open cycle." : "No open cycle — loan ledger is empty."}
                 </td>
               </tr>

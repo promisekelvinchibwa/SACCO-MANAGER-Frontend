@@ -138,7 +138,7 @@ export default function TransactionSheet() {
   const pendingCorrections = corrections.filter((correction) => correction.status === "pending");
 
   return (
-    <div>
+    <div className="no-lines">
       <h1 className="page-title">Transaction sheet</h1>
       <p className="page-sub">All transactions recorded by the treasurer for the current open cycle.</p>
       {approvedRequestsCount > 0 && (

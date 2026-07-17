@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useCycles } from "../hooks/useCycles";
 import ReadOnlyNotice from "../components/ReadOnlyNotice";
 
 export default function Members() {
-  const { isTreasurer, joinCode, groupHasOpenCycle } = useAuth();
+  const { isTreasurer, joinCode } = useAuth();
+  // Deliberately NOT using groupHasOpenCycle from AuthContext here: that
+  // value only updates when applyMe() runs (login/register/switchGroup/
+  // refreshMe), so if a cycle gets closed via share-out and something
+  // upstream misses or delays that refresh, this page would keep the
+  // "Add member" form blocked even though the cycle is actually closed.
+  // useCycles() re-fetches /api/cycles/ fresh on every mount, so this
+  // page always reflects the true current state the moment you land on
+  // it -- the same pattern Cycles.jsx already uses.
+  const { cycles } = useCycles();
+  const openCycle = cycles.find((c) => c.status === "open");
+  const groupHasOpenCycle = !!openCycle;
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [form, setForm] = useState({
@@ -108,15 +120,32 @@ export default function Members() {
             <h2 className="card-heading" style={{ margin: 0 }}>Add a member</h2>
             {joinCode && (
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 6 }}>Join code</div>
+                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 6 }}>
+                  Join code
+                  {groupHasOpenCycle && (
+                    <span style={{ color: "var(--rust, #b3261e)" }}> &mdash; revoked while cycle is open</span>
+                  )}
+                </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <div className="amount" style={{ background: "var(--ink)", color: "#fff", padding: "6px 10px", borderRadius: 6 }}>
+                  <div
+                    className="amount"
+                    style={{
+                      background: groupHasOpenCycle ? "var(--paper-raised)" : "var(--ink)",
+                      color: groupHasOpenCycle ? "var(--ink-soft)" : "#fff",
+                      border: groupHasOpenCycle ? "1px solid var(--line)" : "none",
+                      textDecoration: groupHasOpenCycle ? "line-through" : "none",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                    }}
+                  >
                     {joinCode}
                   </div>
                   <button
                     type="button"
                     className="btn"
                     onClick={() => navigator.clipboard?.writeText(joinCode)}
+                    disabled={groupHasOpenCycle}
+                    title={groupHasOpenCycle ? "This code can't be used while a cycle is open" : "Copy join code"}
                     style={{ padding: "8px 10px" }}
                   >Copy</button>
                 </div>

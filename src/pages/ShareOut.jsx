@@ -42,6 +42,7 @@ export default function ShareOut() {
       await client.post(`/cycles/${openCycle.id}/share_out/`, {});
       setMessage({ type: "success", text: "Share-out computed." });
       reloadCycles();
+      await refreshMe();
       const resp = await client.get("/share-outs/");
       setShareOuts(resp.data || []);
     } catch (err) {
@@ -57,7 +58,7 @@ export default function ShareOut() {
   }, []);
 
   return (
-    <div>
+    <div className="no-lines">
       <h1 className="page-title">Share-out</h1>
       <p className="page-sub">Compute the end-of-cycle distribution. Total distributed always reconciles to the fund.</p>
 

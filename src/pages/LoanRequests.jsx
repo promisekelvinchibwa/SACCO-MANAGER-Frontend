@@ -16,6 +16,7 @@ export default function LoanRequests() {
   const [members, setMembers] = useState([]);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [duration_weeks, setDurationWeeks] = useState("2");
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -40,7 +41,7 @@ export default function LoanRequests() {
     setMessage(null);
     setSubmitting(true);
     try {
-      await client.post("/loan-requests/", { amount, reason });
+      await client.post("/loan-requests/", { amount, reason, duration_weeks: parseInt(duration_weeks, 10) });
       setMessage({ type: "success", text: "Loan request submitted — waiting on the treasurer to review it." });
       setAmount("");
       setReason("");
@@ -116,6 +117,19 @@ export default function LoanRequests() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 220 }}>
+                <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>Duration</span>
+                <select
+                  value={duration_weeks}
+                  onChange={(e) => setDurationWeeks(e.target.value)}
+                  style={{ padding: "8px 10px" }}
+                >
+                  <option value="1">1 week (15% interest)</option>
+                  <option value="2">2 weeks (15% interest)</option>
+                  <option value="3">3 weeks (20% interest)</option>
+                  <option value="4">4 weeks (20% interest)</option>
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 220 }}>
                 <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>Reason (optional)</span>
                 <input
                   type="text"
@@ -144,6 +158,7 @@ export default function LoanRequests() {
               <tr>
                 {isTreasurer && <th>Member</th>}
                 <th>Amount</th>
+                <th>Duration</th>
                 <th>Reason</th>
                 <th>Requested</th>
                 <th></th>
@@ -154,6 +169,7 @@ export default function LoanRequests() {
                 <tr key={r.id}>
                   {isTreasurer && <td>{memberName(r)}</td>}
                   <td className="amount">MK {Number(r.amount).toLocaleString()}</td>
+                  <td>{r.duration_weeks} week{r.duration_weeks > 1 ? "s" : ""}</td>
                   <td>{r.reason || "—"}</td>
                   <td>{new Date(r.requested_at).toLocaleDateString()}</td>
                   <td>
