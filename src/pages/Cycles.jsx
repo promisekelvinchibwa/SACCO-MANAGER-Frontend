@@ -185,7 +185,6 @@ export default function Cycles() {
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
-              <th>Fund balance</th>
             </tr>
           </thead>
           <tbody>
@@ -199,11 +198,10 @@ export default function Cycles() {
                     {c.status}
                   </span>
                 </td>
-                <td className="amount">MK {Number(c.fund_balance).toLocaleString()}</td>
               </tr>
             ))}
             {!loading && cycles.length === 0 && (
-              <tr><td colSpan={5} style={{ color: "var(--ink-soft)" }}>No cycles yet.</td></tr>
+              <tr><td colSpan={4} style={{ color: "var(--ink-soft)" }}>No cycles yet.</td></tr>
             )}
           </tbody>
         </table>

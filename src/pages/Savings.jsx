@@ -17,11 +17,16 @@ export default function Savings() {
   const [payoutForm, setPayoutForm] = useState({ member: "", amount: "", reason: "" });
   const [payoutMessage, setPayoutMessage] = useState(null);
   const [recordingPayout, setRecordingPayout] = useState(false);
+  const [groupBalance, setGroupBalance] = useState(null);
 
   const openCycle = cycles.find((c) => c.status === "open");
 
   useEffect(() => {
     client.get("/members/").then((res) => setMembers(res.data));
+  }, []);
+
+  useEffect(() => {
+    client.get("/me/group-balance/").then((res) => setGroupBalance(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -152,25 +157,21 @@ export default function Savings() {
         <div className="stat-box">
           <div className="stat-label">Group fund balance</div>
           <div className="stat-value">
-            {openCycle ? `MK ${Number(openCycle.fund_balance).toLocaleString()}` : "\u2014"}
+            {groupBalance ? `MK ${Number(groupBalance.fund_balance).toLocaleString()}` : "\u2014"}
           </div>
         </div>
-        {isTreasurer && (
-          <>
-            <div className="stat-box">
-              <div className="stat-label">Social fund reserve</div>
-              <div className="stat-value">
-                {openCycle ? `MK ${Number(openCycle.social_fund_balance).toLocaleString()}` : "\u2014"}
-              </div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">Lendable balance</div>
-              <div className="stat-value">
-                {openCycle ? `MK ${Number(openCycle.lendable_balance).toLocaleString()}` : "\u2014"}
-              </div>
-            </div>
-          </>
-        )}
+        <div className="stat-box">
+          <div className="stat-label">Social fund reserve</div>
+          <div className="stat-value">
+            {groupBalance ? `MK ${Number(groupBalance.social_fund_balance).toLocaleString()}` : "\u2014"}
+          </div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-label">Lendable balance</div>
+          <div className="stat-value">
+            {groupBalance ? `MK ${Number(groupBalance.lendable_balance).toLocaleString()}` : "\u2014"}
+          </div>
+        </div>
       </div>
 
       {!isTreasurer && (

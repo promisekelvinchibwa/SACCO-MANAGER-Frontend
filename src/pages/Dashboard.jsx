@@ -9,17 +9,17 @@ export default function Dashboard() {
   const [members, setMembers] = useState([]);
   const [loans, setLoans] = useState([]);
   const [balance, setBalance] = useState(null);
+  const [groupBalance, setGroupBalance] = useState(null);
   const [meetings, setMeetings] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([client.get("/members/"), client.get("/loans/"), client.get("/me/balance/")])
-      .then(([m, l, b]) => {
-        // Handle both a plain array response and DRF-style pagination
-        // ({ count, next, previous, results }).
+    Promise.all([client.get("/members/"), client.get("/loans/"), client.get("/me/balance/"), client.get("/me/group-balance/")])
+      .then(([m, l, b, g]) => {
         setMembers(Array.isArray(m.data) ? m.data : m.data?.results ?? []);
         setLoans(Array.isArray(l.data) ? l.data : l.data?.results ?? []);
         setBalance(b.data);
+        setGroupBalance(g.data);
       })
       .catch(() => setError("Could not load dashboard data."));
   }, []);
@@ -85,7 +85,19 @@ export default function Dashboard() {
         <div className="stat-box">
           <div className="stat-label">Available fund balance</div>
           <div className="stat-value">
-            {cyclesLoading ? "\u2026" : openCycle ? `MK ${Number(openCycle.fund_balance).toLocaleString()}` : "\u2014"}
+            {groupBalance ? `MK ${Number(groupBalance.fund_balance).toLocaleString()}` : "\u2014"}
+          </div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-label">Social fund reserve</div>
+          <div className="stat-value">
+            {groupBalance ? `MK ${Number(groupBalance.social_fund_balance).toLocaleString()}` : "\u2014"}
+          </div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-label">Lendable balance</div>
+          <div className="stat-value">
+            {groupBalance ? `MK ${Number(groupBalance.lendable_balance).toLocaleString()}` : "\u2014"}
           </div>
         </div>
         <div className="stat-box">
